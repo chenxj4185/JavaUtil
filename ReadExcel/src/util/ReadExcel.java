@@ -1,146 +1,126 @@
-package util;
+package Util;
 
-import org.apache.log4j.Logger;
+
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
+public class ReadExcel {
 
-
-/**
- * ClassName: <br>
- * Description: <br>
- * Company: rrtx
- *
- * @author chenxj
- * @version v1.0.0    2019/1/31 19:17 chenxj  文件初始创建
- */
-public class MyReadExcel {
-    private static Logger logger  = Logger.getLogger(MyReadExcel.class);
-    private final static String xls = "xls";
-    private final static String xlsx = "xlsx";
-
-    /**
-     * 读入excel文件，解析后返回
-     * @param file
-     * @throws IOException
-     */
-    public static List<String[]> readExcel(MultipartFile file) throws IOException {
-        //检查文件
-        checkFile(file);
-        //获得Workbook工作薄对象
-        Workbook workbook = getWorkBook(file);
-        //创建返回对象，把每行中的值作为一个数组，所有行作为一个集合返回
-        List<String[]> list = new ArrayList<String[]>();
-        if(workbook != null){
-            for(int sheetNum = 0;sheetNum < workbook.getNumberOfSheets();sheetNum++){
-                //获得当前sheet工作表
-                Sheet sheet = workbook.getSheetAt(sheetNum);
-                if(sheet == null){
-                    continue;
-                }
-                //获得当前sheet的开始行
-                int firstRowNum  = sheet.getFirstRowNum();
-                //获得当前sheet的结束行
-                int lastRowNum = sheet.getLastRowNum();
-                //循环除了第一行的所有行
-                for(int rowNum = firstRowNum+1;rowNum <= lastRowNum;rowNum++){
-                    //获得当前行
-                    Row row = sheet.getRow(rowNum);
-                    if(row == null){
-                        continue;
+    public static void main(String[] args) {
+        Workbook wb =null;
+        Sheet sheet = null;
+        Row row = null;
+        List<Map<String,String>> list = null;
+        String cellData = null;
+        String filePath = "D:\\test.xlsx";
+        String columns[] = {"name","age","score"};
+        wb = readExcel(filePath);
+        if(wb != null){
+            //用来存放表中数据
+            list = new ArrayList<Map<String,String>>();
+            //获取第一个sheet
+            sheet = wb.getSheetAt(0);
+            //获取最大行数
+            int rownum = sheet.getPhysicalNumberOfRows();
+            //获取第一行
+            row = sheet.getRow(0);
+            //获取最大列数
+            int colnum = row.getPhysicalNumberOfCells();
+            for (int i = 1; i<rownum; i++) {
+                Map<String,String> map = new LinkedHashMap<String,String>();
+                row = sheet.getRow(i);
+                if(row !=null){
+                    for (int j=0;j<colnum;j++){
+                        cellData = (String) getCellFormatValue(row.getCell(j));
+                        map.put(columns[j], cellData);
                     }
-                    //获得当前行的开始列
-                    int firstCellNum = row.getFirstCellNum();
-                    //获得当前行的列数
-                    int lastCellNum = row.getPhysicalNumberOfCells();
-                    String[] cells = new String[row.getPhysicalNumberOfCells()];
-                    //循环当前行
-                    for(int cellNum = firstCellNum; cellNum < lastCellNum;cellNum++){
-                        Cell cell = row.getCell(cellNum);
-                        cells[cellNum] = getCellValue(cell);
-                    }
-                    list.add(cells);
+                }else{
+                    break;
                 }
+                list.add(map);
             }
-            workbook.close();
         }
-        return list;
+        //遍历解析出来的list
+        for (Map<String,String> map : list) {
+            for (Entry<String,String> entry : map.entrySet()) {
+                System.out.print(entry.getKey()+":"+entry.getValue()+",");
+            }
+            System.out.println();
+        }
+
     }
-    public static void checkFile(MultipartFile file) throws IOException{
-        //判断文件是否存在
-        if(null == file){
-            logger.error("文件不存在！");
-            throw new FileNotFoundException("文件不存在！");
+    //读取excel
+    public static Workbook readExcel(String filePath){
+        Workbook wb = null;
+        if(filePath==null){
+            return null;
         }
-        //获得文件名
-        String fileName = file.getOriginalFilename();
-        //判断文件是否是excel文件
-        if(!fileName.endsWith(xls) && !fileName.endsWith(xlsx)){
-            logger.error(fileName + "不是excel文件");
-            throw new IOException(fileName + "不是excel文件");
-        }
-    }
-    public static Workbook getWorkBook(MultipartFile file) {
-        //获得文件名
-        String fileName = file.getOriginalFilename();
-        //创建Workbook工作薄对象，表示整个excel
-        Workbook workbook = null;
+        String extString = filePath.substring(filePath.lastIndexOf("."));
+        InputStream is = null;
         try {
-            //获取excel文件的io流
-            InputStream is = file.getInputStream();
-            //根据文件后缀名不同(xls和xlsx)获得不同的Workbook实现类对象
-            if(fileName.endsWith(xls)){
-                //2003
-                workbook = new HSSFWorkbook(is);
-            }else if(fileName.endsWith(xlsx)){
-                //2007
-                workbook = new XSSFWorkbook(is);
+            is = new FileInputStream(filePath);
+            if(".xls".equals(extString)){
+                return wb = new HSSFWorkbook(is);
+            }else if(".xlsx".equals(extString)){
+                return wb = new XSSFWorkbook(is);
+            }else{
+                return wb = null;
             }
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
         } catch (IOException e) {
-            logger.info(e.getMessage());
+            e.printStackTrace();
         }
-        return workbook;
+        return wb;
     }
-    public static String getCellValue(Cell cell){
-        String cellValue = "";
-        if(cell == null){
-            return cellValue;
-        }
-        //把数字当成String来读，避免出现1读成1.0的情况
-        if(cell.getCellType() == Cell.CELL_TYPE_NUMERIC){
-            cell.setCellType(Cell.CELL_TYPE_STRING);
-        }
-        //判断数据的类型
-        switch (cell.getCellType()){
-            case Cell.CELL_TYPE_NUMERIC: //数字
-                cellValue = String.valueOf(cell.getNumericCellValue());
-                break;
-            case Cell.CELL_TYPE_STRING: //字符串
-                cellValue = String.valueOf(cell.getStringCellValue());
-                break;
-            case Cell.CELL_TYPE_BOOLEAN: //Boolean
-                cellValue = String.valueOf(cell.getBooleanCellValue());
-                break;
-            case Cell.CELL_TYPE_FORMULA: //公式
-                cellValue = String.valueOf(cell.getCellFormula());
-                break;
-            case Cell.CELL_TYPE_BLANK: //空值
-                cellValue = "";
-                break;
-            case Cell.CELL_TYPE_ERROR: //故障
-                cellValue = "非法字符";
-                break;
-            default:
-                cellValue = "未知类型";
-                break;
+    public static Object getCellFormatValue(Cell cell){
+        Object cellValue = null;
+        if(cell!=null){
+            //判断cell类型
+            switch(cell.getCellType()){
+                case Cell.CELL_TYPE_NUMERIC:{
+                    cellValue = String.valueOf(cell.getNumericCellValue());
+                    break;
+                }
+                case Cell.CELL_TYPE_FORMULA:{
+                    //判断cell是否为日期格式
+                    if(DateUtil.isCellDateFormatted(cell)){
+                        //转换为日期格式YYYY-mm-dd
+                        cellValue = cell.getDateCellValue();
+                    }else{
+                        //数字
+                        cellValue = String.valueOf(cell.getNumericCellValue());
+                    }
+                    break;
+                }
+                case Cell.CELL_TYPE_STRING:{
+                    cellValue = cell.getRichStringCellValue().getString();
+                    break;
+                }
+                default:
+                    cellValue = "";
+            }
+        }else{
+            cellValue = "";
         }
         return cellValue;
     }
+
 }
